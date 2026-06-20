@@ -39,8 +39,8 @@ let lastTouchTime = 0;
 // Low-pass filter coefficient
 const ALPHA = 0.2;
 
-// Throttle
-const SEND_RATE = 1000 / 30;
+// Throttle: send at ~60 times per second for smooth blade tracking
+const SEND_RATE = 1000 / 60;
 let lastSendTime = 0;
 
 // ─── Screen management ────────────────────────────────────────────────────────
@@ -251,6 +251,9 @@ function onDeviceOrientation(e) {
   smoothAlpha = smoothAlpha * (1 - ALPHA) + (e.alpha || 0) * ALPHA;
   smoothBeta  = smoothBeta  * (1 - ALPHA) + (e.beta  || 0) * ALPHA;
   smoothGamma = smoothGamma * (1 - ALPHA) + (e.gamma || 0) * ALPHA;
+  
+  // Continuous emission when motion is active for smooth real-time tracking
+  tryEmit();
 }
 
 function tryEmit() {
@@ -265,7 +268,7 @@ function tryEmit() {
   const mag = Math.sqrt(smoothAx * smoothAx + smoothAy * smoothAy + smoothAz * smoothAz);
   const swingMagnitude = Math.min(mag / 20, 1.0);
 
-  // Tilt → normalized x,y with calibration
+  // Tilt → normalized x,y with calibration offset
   let diffGamma = smoothGamma - gammaOffset;
   let diffBeta = smoothBeta - betaOffset;
 
@@ -275,10 +278,13 @@ function tryEmit() {
   if (diffBeta > 180) diffBeta -= 360;
   if (diffBeta < -180) diffBeta += 360;
 
-  // Sensitivity factor: 45 degrees tilt is enough to go edge to edge
-  const sensitivity = 45;
+  // Sensitivity: lower value = higher sensitivity
+  // 40 degrees tilt reaches edge (±1 normalized)
+  // x-axis: gamma (left/right roll) → x position
+  // y-axis: -beta (up/down pitch) → y position (inverted so up is negative)
+  const sensitivity = 40;
   const x = Math.max(-1, Math.min(1, diffGamma / sensitivity));
-  const y = Math.max(-1, Math.min(1, -diffBeta / sensitivity));
+  const y = Math.max(-1, Math.min(1, -diffBeta / sensitivity));  // negative: up = up
 
   const isSlicing = swingMagnitude > 0.3;
 

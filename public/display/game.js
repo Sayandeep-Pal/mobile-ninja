@@ -1031,8 +1031,10 @@ function gameLoop() {
   let isSlicing = false;
   if (latestMotion) {
     const { x, y, isSlicing: slicing } = latestMotion;
+    // x and y are already normalized to [-1, 1] from controller
+    // Map to canvas coordinates: map [-1,1] to [0, canvas.width/height]
     bladeX = ((x + 1) / 2) * canvas.width;
-    bladeY = ((- y + 1) / 2) * canvas.height; // invert y
+    bladeY = ((y + 1) / 2) * canvas.height;  // y is already negated by controller
     isSlicing = slicing;
     updateBladeTrail(bladeX, bladeY);
     checkSlices(isSlicing);
