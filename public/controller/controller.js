@@ -12,7 +12,6 @@ const permissionError  = document.getElementById('permission-error');
 const statusDot        = document.getElementById('status-dot');
 const readyTitle       = document.getElementById('ready-title');
 const readySub         = document.getElementById('ready-sub');
-const swingBarFill     = document.getElementById('swing-bar-fill');
 const sliceFlash       = document.getElementById('slice-flash');
 const calibrateBtn     = document.getElementById('calibrate-btn');
 
@@ -21,10 +20,8 @@ let socket = null;
 let currentRoom = null;
 let motionActive = false;
 
-// Sensor smoothing state
-let smoothAx = 0, smoothAy = 0, smoothAz = 0;
+// Sensor smoothing state (cursor mode: orientation only)
 let smoothAlpha = 0, smoothBeta = 0, smoothGamma = 0;
-let smoothRotAlpha = 0, smoothRotBeta = 0, smoothRotGamma = 0;
 
 // Calibration offsets
 let betaOffset = 0;
@@ -226,25 +223,7 @@ function startMotionListeners() {
 }
 
 function onDeviceMotion(e) {
-  const a = e.acceleration || {};
-  const ag = e.accelerationIncludingGravity || {};
-  const r = e.rotationRate || {};
-
-  // Use accelerationIncludingGravity as fallback
-  const rawAx = a.x != null ? a.x : (ag.x || 0);
-  const rawAy = a.y != null ? a.y : (ag.y || 0);
-  const rawAz = a.z != null ? a.z : (ag.z || 0);
-
-  // Low-pass filter
-  smoothAx = smoothAx * (1 - ALPHA) + rawAx * ALPHA;
-  smoothAy = smoothAy * (1 - ALPHA) + rawAy * ALPHA;
-  smoothAz = smoothAz * (1 - ALPHA) + rawAz * ALPHA;
-
-  smoothRotAlpha = smoothRotAlpha * (1 - ALPHA) + (r.alpha || 0) * ALPHA;
-  smoothRotBeta  = smoothRotBeta  * (1 - ALPHA) + (r.beta  || 0) * ALPHA;
-  smoothRotGamma = smoothRotGamma * (1 - ALPHA) + (r.gamma || 0) * ALPHA;
-
-  tryEmit();
+  // Cursor mode: position-only, acceleration not used
 }
 
 function onDeviceOrientation(e) {
@@ -264,11 +243,7 @@ function tryEmit() {
   if (now - lastSendTime < SEND_RATE) return;
   lastSendTime = now;
 
-  // Swing magnitude
-  const mag = Math.sqrt(smoothAx * smoothAx + smoothAy * smoothAy + smoothAz * smoothAz);
-  const swingMagnitude = Math.min(mag / 20, 1.0);
-
-  // Tilt → normalized x,y with calibration offset
+  // Tilt → normalized x,y with calibration offset (cursor position only)
   let diffGamma = smoothGamma - gammaOffset;
   let diffBeta = smoothBeta - betaOffset;
 
@@ -278,28 +253,20 @@ function tryEmit() {
   if (diffBeta > 180) diffBeta -= 360;
   if (diffBeta < -180) diffBeta += 360;
 
-  // Sensitivity: lower value = higher sensitivity
-  // 40 degrees tilt reaches edge (±1 normalized)
+  // Sensitivity: 40 degrees tilt reaches edge (±1 normalized)
   // x-axis: gamma (left/right roll) → x position
-  // y-axis: -beta (up/down pitch) → y position (inverted so up is negative)
+  // y-axis: -beta (up/down pitch) → y position
   const sensitivity = 40;
   const x = Math.max(-1, Math.min(1, diffGamma / sensitivity));
-  const y = Math.max(-1, Math.min(1, -diffBeta / sensitivity));  // negative: up = up
-
-  const isSlicing = swingMagnitude > 0.3;
+  const y = Math.max(-1, Math.min(1, -diffBeta / sensitivity));
 
   const payload = {
     x,
     y,
-    swingMagnitude,
-    isSlicing,
     timestamp: now
   };
 
   socket.emit('motion_data', payload);
-
-  // Update UI swing bar
-  swingBarFill.style.width = (swingMagnitude * 100).toFixed(1) + '%';
 }
 
 // ─── Touch Fallback Controls ──────────────────────────────────────────────────
@@ -317,7 +284,7 @@ function handleTouchStart(e) {
   lastTouchTime = performance.now();
   touchActive = true;
 
-  sendTouchUpdate(touch, rect, 0);
+  sendTouchUpdate(touch, rect);
   e.preventDefault();
 }
 
@@ -325,25 +292,12 @@ function handleTouchMove(e) {
   if (!touchActive) return;
   const touch = e.touches[0];
   const rect = screenReady.getBoundingClientRect();
-  const now = performance.now();
 
-  const dx = touch.clientX - lastTouchX;
-  const dy = touch.clientY - lastTouchY;
-  const dt = now - lastTouchTime;
-
-  let speed = 0;
-  if (dt > 0) {
-    const dist = Math.hypot(dx, dy);
-    speed = dist / dt;
-  }
-
-  const swingMagnitude = Math.min(speed / 2.0, 1.0);
-
-  sendTouchUpdate(touch, rect, swingMagnitude);
+  sendTouchUpdate(touch, rect);
 
   lastTouchX = touch.clientX;
   lastTouchY = touch.clientY;
-  lastTouchTime = now;
+  lastTouchTime = performance.now();
   e.preventDefault();
 }
 
@@ -353,30 +307,22 @@ function handleTouchEnd(e) {
     socket.emit('motion_data', {
       x: (lastTouchX / window.innerWidth) * 2 - 1,
       y: -((lastTouchY / window.innerHeight) * 2 - 1),
-      swingMagnitude: 0,
-      isSlicing: false,
       timestamp: performance.now()
     });
   }
 }
 
-function sendTouchUpdate(touch, rect, swingMagnitude) {
+function sendTouchUpdate(touch, rect) {
   if (!socket || !socket.connected || !currentRoom) return;
 
   const normX = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
   const normY = -(((touch.clientY - rect.top) / rect.height) * 2 - 1);
 
-  const isSlicing = swingMagnitude > 0.25;
-
   socket.emit('motion_data', {
     x: Math.max(-1, Math.min(1, normX)),
     y: Math.max(-1, Math.min(1, normY)),
-    swingMagnitude,
-    isSlicing,
     timestamp: performance.now()
   });
-
-  swingBarFill.style.width = (swingMagnitude * 100).toFixed(1) + '%';
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

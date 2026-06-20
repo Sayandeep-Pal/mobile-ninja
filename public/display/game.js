@@ -638,48 +638,41 @@ function drawBladeTrail(isSlicing) {
   ctx.restore();
 }
 
-// ─── Slice detection (line-segment vs circle) ─────────────────────────────────
-function pointToSegmentDist(px, py, ax, ay, bx, by) {
-  const dx = bx - ax, dy = by - ay;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(px - ax, py - ay);
-  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
-}
+// ─── Slice detection ──────────────────────────────────────────────────────────
+// Automatic slice detection: blade cursor touching fruit/bomb = instant slice
+function checkSlicesAuto() {
+  if (bladeTrail.length < 1) return;
 
-function checkSlices(isSlicing) {
-  if (!isSlicing || bladeTrail.length < 2) return;
-
-  const now = performance.now();
-
-  for (let ti = bladeTrail.length - 1; ti >= 1; ti--) {
-    const p1 = bladeTrail[ti - 1];
-    const p2 = bladeTrail[ti];
-    if (now - p1.t > 80) break; // only check recent trail
-
-    // Check fruits
-    for (let i = fruits.length - 1; i >= 0; i--) {
-      const f = fruits[i];
-      if (f.sliced) continue;
-      const dist = pointToSegmentDist(f.x, f.y, p1.x, p1.y, p2.x, p2.y);
-      if (dist < f.radius * 1.1) {
-        sliceFruit(i);
-        break;
-      }
-    }
-
-    // Check bombs
-    for (let i = bombs.length - 1; i >= 0; i--) {
-      const b = bombs[i];
-      if (b.sliced) continue;
-      const dist = pointToSegmentDist(b.x, b.y, p1.x, p1.y, p2.x, p2.y);
-      if (dist < b.radius * 1.1) {
-        sliceBomb(i);
-        break;
-      }
+  const currentPos = bladeTrail[bladeTrail.length - 1];
+  const currX = currentPos.x;
+  const currY = currentPos.y;
+  
+  // Check if current blade position touches any fruit
+  for (let i = fruits.length - 1; i >= 0; i--) {
+    const f = fruits[i];
+    if (f.sliced) continue;
+    const dist = Math.hypot(f.x - currX, f.y - currY);
+    if (dist < f.radius * 1.2) {
+      sliceFruit(i);
+      break;
     }
   }
+
+  // Check if current blade position touches any bomb
+  for (let i = bombs.length - 1; i >= 0; i--) {
+    const b = bombs[i];
+    if (b.sliced) continue;
+    const dist = Math.hypot(b.x - currX, b.y - currY);
+    if (dist < b.radius * 1.2) {
+      sliceBomb(i);
+      break;
+    }
+  }
+}
+
+// Legacy: kept for compatibility but not used in cursor mode
+function checkSlices(isSlicing) {
+  // Cursor mode: slices are automatic on blade contact
 }
 
 function sliceFruit(i) {
@@ -1027,17 +1020,16 @@ function gameLoop() {
 
   updateParticles();
 
-  // Update blade position from motion data
-  let isSlicing = false;
+  // Update blade position from motion data (cursor mode - position only)
   if (latestMotion) {
-    const { x, y, isSlicing: slicing } = latestMotion;
-    // x and y are already normalized to [-1, 1] from controller
+    const { x, y } = latestMotion;
+    // x and y are normalized to [-1, 1] from controller
     // Map to canvas coordinates: map [-1,1] to [0, canvas.width/height]
     bladeX = ((x + 1) / 2) * canvas.width;
-    bladeY = ((y + 1) / 2) * canvas.height;  // y is already negated by controller
-    isSlicing = slicing;
+    bladeY = ((y + 1) / 2) * canvas.height;
     updateBladeTrail(bladeX, bladeY);
-    checkSlices(isSlicing);
+    // Automatic slice detection: check if blade touches any fruit/bomb
+    checkSlicesAuto();
   }
 
   // ── Draw frame ───────────────────────────────────────────────────────────────
@@ -1061,8 +1053,8 @@ function gameLoop() {
   bombs.forEach(b => drawBomb(b));
   // Draw particles
   drawParticles();
-  // Draw blade trail
-  drawBladeTrail(isSlicing);
+  // Draw blade trail (always bright glow in cursor mode)
+  drawBladeTrail(true);
   // Score floaters
   updateAndDrawScoreTexts();
 
