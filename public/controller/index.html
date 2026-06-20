@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>AirBlade Controller</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Screen 1: Connect -->
+  <div id="screen-connect" class="screen active">
+    <div class="connect-inner">
+      <div class="logo">
+        <span class="logo-icon">🗡️</span>
+        <h1 class="logo-text">AIRBLADE</h1>
+        <p class="logo-sub">Swing your phone to slice!</p>
+      </div>
+      <div class="input-group">
+        <label for="room-code-input" class="input-label">ROOM CODE</label>
+        <input
+          id="room-code-input"
+          type="text"
+          maxlength="4"
+          placeholder="XXXX"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="characters"
+          spellcheck="false"
+        />
+        <p id="connect-error" class="error-msg hidden"></p>
+      </div>
+      <button id="connect-btn" class="btn btn-primary">CONNECT</button>
+    </div>
+  </div>
+
+  <!-- Screen 2: Permission (iOS only) -->
+  <div id="screen-permission" class="screen">
+    <div class="permission-inner">
+      <div class="perm-icon">📱</div>
+      <h2>Motion Access Required</h2>
+      <p>AirBlade needs to read your phone's motion sensors to detect swings.</p>
+      <button id="permission-btn" class="btn btn-primary">Enable Motion Controls</button>
+      <p id="permission-error" class="error-msg hidden"></p>
+    </div>
+  </div>
+
+  <!-- Screen 3: Ready / Playing -->
+  <div id="screen-ready" class="screen">
+    <div class="ready-inner">
+      <div id="status-dot" class="status-dot connected"></div>
+      <h2 id="ready-title">CONNECTED</h2>
+      <p id="ready-sub">Start swinging!</p>
+      <div class="swing-indicator">
+        <div id="swing-bar-fill" class="swing-bar-fill"></div>
+      </div>
+      <p class="swing-label">SWING POWER</p>
+      <button id="calibrate-btn" class="btn btn-secondary">CALIBRATE CENTER</button>
+      <div id="slice-flash" class="slice-flash hidden"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="controller.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AirBlade — Display</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Full-screen canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ── Waiting screen ── -->
+  <div id="screen-waiting" class="overlay active">
+    <div class="waiting-content">
+      <h1 class="game-title">AIRBLADE</h1>
+      <p class="waiting-sub">Scan QR or enter code on your phone</p>
+
+      <div class="room-code-display">
+        <span class="room-label">ROOM CODE</span>
+        <span id="display-room-code" class="room-code">----</span>
+      </div>
+
+      <div id="qr-container" class="qr-container">
+        <img id="qr-img" src="" alt="QR Code" />
+        <p class="qr-hint">Point your phone camera here</p>
+      </div>
+
+      <div id="controller-url" class="controller-url-box">
+        <span class="url-label">OR GO TO</span>
+        <span id="display-controller-url" class="url-text">—</span>
+      </div>
+
+      <div class="waiting-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <p class="waiting-status">Waiting for player…</p>
+    </div>
+  </div>
+
+  <!-- ── Countdown screen ── -->
+  <div id="screen-countdown" class="overlay">
+    <div class="countdown-content">
+      <div id="countdown-number" class="countdown-number">3</div>
+      <p class="countdown-label">GET READY</p>
+    </div>
+  </div>
+
+  <!-- ── Reconnect overlay ── -->
+  <div id="screen-reconnect" class="overlay">
+    <div class="reconnect-content">
+      <div class="reconnect-icon">📡</div>
+      <h2 class="reconnect-title">CONTROLLER DISCONNECTED</h2>
+      <p class="reconnect-sub">Waiting for player to reconnect…</p>
+      <div class="room-code-display">
+        <span class="room-label">ROOM CODE</span>
+        <span id="reconnect-room-code" class="room-code">----</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Game over screen ── -->
+  <div id="screen-gameover" class="overlay">
+    <div class="gameover-content">
+      <h2 class="gameover-title">GAME OVER</h2>
+      <div class="gameover-stats">
+        <div class="stat-row">
+          <span class="stat-label">SCORE</span>
+          <span id="go-score" class="stat-value">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">MAX COMBO</span>
+          <span id="go-combo" class="stat-value">x0</span>
+        </div>
+      </div>
+      <button id="play-again-btn" class="play-again-btn">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
